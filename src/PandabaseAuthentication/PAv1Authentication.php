@@ -3,9 +3,9 @@
 namespace PandabaseAuthentication;
 
 
-use KodiSecurity\Model\AuthenticatedUserInterface;
 use KodiSecurity\Model\Authentication\AuthenticationInterface;
 use KodiSecurity\Model\Authentication\AuthenticationTaskResult;
+use KodiSecurity\Model\User\AuthenticatedUserInterface;
 use PandaBase\Connection\ConnectionManager;
 
 /**
@@ -30,9 +30,12 @@ class PAv1Authentication extends AuthenticationInterface
      */
     public function login(array $credentials): AuthenticationTaskResult
     {
+        /** @var AuthenticatedUserInterface $userClassName */
+        $userClassName = $this->getConfiguration()["user_class_name"];
+
         $username = $credentials["username"];
         $passwordCandidate = $credentials["password"];
-        $userCandidate = AuthenticatedUserInterface::getUserByUsername($username);
+        $userCandidate = $userClassName::getUserByUsername($username);
 
         // If the username doesnt exist, we stop the auth process with error.
         if(!$userCandidate->isValidUsername()) {
@@ -49,6 +52,9 @@ class PAv1Authentication extends AuthenticationInterface
 
     public function register(array $credentials): AuthenticationTaskResult
     {
+        /** @var AuthenticatedUserInterface $userClassName */
+        $userClassName = $this->getConfiguration()["user_class_name"];
+
         // Check mandatory fields existence
         $fields = ["username", "email", "firstname", "lastname", "password", "repassword"];
         foreach ($fields as $field) {
@@ -58,12 +64,12 @@ class PAv1Authentication extends AuthenticationInterface
             }
         }
 
-        if((AuthenticatedUserInterface::getUserByUsername($credentials["username"]))->isValidUsername()) {
+        if(($userClassName::getUserByUsername($credentials["username"]))->isValidUsername()) {
             $authResult = new AuthenticationTaskResult(false, "USERNAME_EXISTS");
             return $authResult;
         }
 
-        if((AuthenticatedUserInterface::getUserByEmail($credentials["email"]))->isValidUsername()) {
+        if(($userClassName::getUserByEmail($credentials["email"]))->isValidUsername()) {
             $authResult = new AuthenticationTaskResult(false, "EMAIL_EXISTS");
             return $authResult;
         }
@@ -74,7 +80,6 @@ class PAv1Authentication extends AuthenticationInterface
         }
         $credentials["password"] = $this->hashPassword($credentials["password"])->output;
 
-        $userClassName = $this->getConfiguration()["user_class_name"];
         $user = new $userClassName([
             "username"  => $credentials["username"],
             "email"     => $credentials["email"],
